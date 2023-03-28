@@ -1,0 +1,956 @@
+openapi: 3.0.3
+info:
+  title: Catálogo de Livros
+  description: |-
+    Este projeto consiste em uma simples API para catálogo, que permite a manipulação de registros de livros, autores e categorias.
+  contact:
+    name: Herberth Leão
+    email: inbox@herberthleao.me
+    url: https://herberthleao.me
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit/
+  version: 0.1.0
+servers:
+  - url: http://localhost:8000/api/v1
+tags:
+  - name: user
+    description: Regsitro de usuários
+  - name: auth
+    description: Controle de autenticação
+  - name: author
+    description: Autores dos livros
+  - name: category
+    description: Categorias de livros
+  - name: book
+    description: Registro de livros
+paths:
+  /users:
+    post:
+      tags:
+        - user
+      summary: Cria um novo usuário
+      description: Insere um novo usuário no banco de dados
+      operationId: postUser
+      requestBody:
+        description: Cria um novo usuário
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  example: john.doe@example.test
+                password:
+                  type: string
+                  example: '12345678'
+        required: true
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreationResponse'
+  /auth:
+    post:
+      tags:
+        - auth
+      summary: Resgata um novo token de acesso
+      description: Gera e retorna um novo token de acesso, com base nas credenciais fornecidas.
+      operationId: postAuth
+      requestBody:
+        description: Gera um novo token de acesso.
+        content:
+          application/json:
+            schema:
+              properties:
+                email:
+                  type: string
+                  example: john.doe@example.test
+                password:
+                  type: string
+                  example: 12345678
+        required: true
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '403':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Erro na validação (estrutura) dos dados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+    put:
+      tags:
+        - auth
+      summary: Atualiza o token de acesso
+      description: Invalida o token anterior e gera um novo.
+      operationId: putAuth
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    delete:
+      tags:
+        - auth
+      summary: Remove o token de acesso
+      description: Invalida a sessão removendo o token de acesso.
+      operationId: deleteAuth
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    get:
+      tags:
+        - auth
+      summary: Resgata o usuário autenticado
+      description: Utiliza o token de acesso fornecido para pegar os dados do usuário atualmente autenticado.
+      operationId: getAuth
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'          
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+  /authors:
+    post:
+      tags:
+        - author
+      summary: Cria um novo autor
+      description: Registra um novo autor de livros no banco de dados.
+      operationId: postAuthor
+      requestBody:
+        description: Registra um novo autor.
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  example: Edgar Allan Poe
+        required: true
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreationResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Erro na validação (estrutura) dos dados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    get:
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: integer
+          description: O ponto inicial da paginação
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: O ponto final da paginação
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+          description: A ordem da busca
+        - in: query
+          name: order_by
+          schema:
+            type: string
+            enum:
+              - id
+              - name
+              - created_at
+            default: id
+          description: O campo de ordenação
+      tags:
+        - author
+      summary: Lista os autores
+      description: Resgata uma coleção de autores, de acordo com os parâmetros especificados.
+      operationId: getAuthors
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleAuthor'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+  /authors/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+        description: O ID do autor
+    get:
+      tags:
+        - author
+      summary: Resgata um autor
+      description: Resgata um determinado autor de acordo com o ID especificado.
+      operationId: getAuthor
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    put:
+      tags:
+        - author
+      summary: Atualiza um determinado autor
+      description: Atualiza os dados de um autor pelo ID.
+      operationId: putAuthor
+      requestBody:
+        description: Atualiza um dado autor
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Edgar Allan Poe
+        required: true
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    delete:
+      tags:
+        - author
+      summary: Exclui um autor
+      description: Remove um determinado autor pelo ID.
+      operationId: deleteAuthor
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+  /categories:
+    post:
+      tags:
+        - category
+      summary: Cria uma nova categoira
+      description: Registra uma nova categoria de livros no banco de dados.
+      operationId: postCategory
+      requestBody:
+        description: Registra uma nova categoria.
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  example: Action
+        required: true
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreationResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Erro na validação (estrutura) dos dados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    get:
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: integer
+          description: O ponto inicial da paginação
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: O ponto final da paginação
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+          description: A ordem da busca
+        - in: query
+          name: order_by
+          schema:
+            type: string
+            enum:
+              - id
+              - name
+              - created_at
+            default: id
+          description: O campo de ordenação
+      tags:
+        - category
+      summary: Lista as categorias
+      description: Resgata uma coleção de categorias, de acordo com os parâmetros especificados.
+      operationId: getCategories
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleCategory'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+  /categories/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+        description: O ID da categoria
+    get:
+      tags:
+        - category
+      summary: Resgata uma categoria
+      description: Resgata uma determinada categoria de acordo com o ID especificado.
+      operationId: getCategory
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    put:
+      tags:
+        - category
+      summary: Atualiza uma determinada categoria
+      description: Atualiza os dados de uma categoria pelo ID.
+      operationId: putCategory
+      requestBody:
+        description: Atualiza uma dada categoria
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Action
+        required: true
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    delete:
+      tags:
+        - category
+      summary: Exclui uma categoria
+      description: Remove uma determinada categoria pelo ID.
+      operationId: deleteCategory
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+  /books:
+    post:
+      tags:
+        - book
+      summary: Cria um novo livro
+      description: Registra um novo livro no banco de dados.
+      operationId: postBook
+      requestBody:
+        description: Registra um novo livro.
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  example: Wuthering Heights
+                author_id:
+                  type: integer
+                  example: 2
+                category_id:
+                  type: integer
+                  example: 5
+                pages:
+                  type: integer
+                  example: 445
+                year:
+                  type: integer
+                  example: 1847
+                isbn:
+                  type: string
+                  example: 978-0-00-735081-0
+                synopsis: 
+                  type: string
+                  example: Set on the stormy moors of northern England, this classic novel is filled with the cruel and ecstatic love between the characters Heathcliff and Catherine.
+        required: true
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreationResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Erro na validação (estrutura) dos dados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    get:
+      parameters:
+        - in: query
+          name: start
+          schema:
+            type: integer
+          description: O ponto inicial da paginação
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: O ponto final da paginação
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+          description: A ordem da busca
+        - in: query
+          name: order_by
+          schema:
+            type: string
+            enum:
+              - id
+              - name
+              - created_at
+            default: id
+          description: O campo de ordenação
+      tags:
+        - book
+      summary: Lista os livros
+      description: Resgata uma coleção de livros, de acordo com os parâmetros especificados.
+      operationId: getBooks
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SimpleBook'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+  /books/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+        description: O ID do livro
+    get:
+      tags:
+        - book
+      summary: Resgata um livro
+      description: Resgata um determinado livro de acordo com o ID especificado.
+      operationId: getBook
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    put:
+      tags:
+        - book
+      summary: Atualiza um determinado livro
+      description: Atualiza os dados de um livro pelo ID.
+      operationId: putBook
+      requestBody:
+        description: Atualiza um dado livro
+        content:
+          application/json:
+            schema:
+              properties:
+                name:
+                  type: string
+                  example: Wuthering Heights
+                author_id:
+                  type: integer
+                  example: 2
+                category_id:
+                  type: integer
+                  example: 5
+                pages:
+                  type: integer
+                  example: 445
+                year:
+                  type: integer
+                  example: 1847
+                isbn:
+                  type: string
+                  example: 978-0-00-735081-0
+                synopsis: 
+                  type: string
+                  example: Set on the stormy moors of northern England, this classic novel is filled with the cruel and ecstatic love between the characters Heathcliff and Catherine.
+        required: true
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+    delete:
+      tags:
+        - book
+      summary: Exclui um livro
+      description: Remove um determinado livro pelo ID.
+      operationId: deleteBook
+      responses:
+        '200':
+          description: Operação bem-sucedida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+      security:
+        - catalog_auth: []
+components:
+  schemas:
+    Author:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: O ID do autor
+          format: int64
+          example: 1
+        name:
+          type: string
+          description: O nome do autor
+          example: Edgar Allan Poe
+        created_at:
+          type: string
+          description: A data de criação
+          example: 2023-03-28 16:44:00
+        updated_at:
+          type: string
+          description: A data da última atualização
+          example: 2023-03-28 16:44:00
+    SimpleAuthor:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: O ID do autor
+          format: int64
+          example: 1
+        name:
+          type: string
+          description: O nome do autor
+          example: Edgar Allan Poe
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: O ID da categoria
+          format: int64
+          example: 1
+        name:
+          type: string
+          description: O nome da categoria
+          example: Action
+        created_at:
+          type: string
+          description: A data de criação
+          example: 2023-03-28 16:44:00
+        updated_at:
+          type: string
+          description: A data da última atualização
+          example: 2023-03-28 16:44:00
+    SimpleCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: O ID da categoria
+          format: int64
+          example: 1
+        name:
+          type: string
+          description: O nome da categoria
+          example: Action
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: O ID do livro
+          example: 4
+        name:
+          type: string
+          description: O nome do livro
+          example: Wuthering Heights
+        author_id:
+          type: integer
+          description: O ID do autor
+          example: 2
+        category_id:
+          type: integer
+          description: O ID da categoria
+          example: 5
+        pages:
+          type: integer
+          description: O número de páginas
+          example: 445
+        year:
+          type: integer
+          description: O ano do livro
+          example: 1847
+        isbn:
+          type: string
+          description: O ISBN-13 do livro
+          example: 978-0-00-735081-0
+        synopsis: 
+          type: string
+          description: A sinopse do livro
+          example: Set on the stormy moors of northern England, this classic novel is filled with the cruel and ecstatic love between the characters Heathcliff and Catherine.
+    SimpleBook:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 4
+        name:
+          type: string
+          example: Wuthering Heights
+        author:
+          type: object
+        isbn:
+          type: string
+          example: 978-0-00-735081-0
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: O ID do usuário
+          format: int64
+          example: 10
+        name:
+          type: string
+          description: O nome do usuário
+          example: John Doe
+        email:
+          type: string
+          description: O e-mail do usuário
+          example: john.doe@example.test
+        password:
+          type: string
+          description: A senha do usuário
+          example: '12345678'
+        created_at:
+          type: string
+          description: A data de criação
+          example: 2023-03-28 16:44:00
+        updated_at:
+          type: string
+          description: A data da última atualização
+          example: 2023-03-28 16:44:00
+    AuthResponse:
+      type: object
+      properties:
+        acess_token:
+          type: string
+          description: O token de acesso
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDAvYXBpL3YxL2F1dGgiLCJpYXQiOjE2ODAwMTIxMjAsImV4cCI6MTY4MDAxNTkyNiwibmJmIjoxNjgwMDEyMzI2LCJqdGkiOiI2UFpvWmNVNDhUY2JyY21DIiwic3ViIjoiMiIsInBydiI6IjIzYmQ1Yzg5NDlmNjAwYWRiMzllNzAxYzQwMDg3MmRiN2E1OTc2ZjcifQ.8IxI0FEVetNkfkAToNMNZVrpsNlnO2ghjG97CqbVLLk
+        token_type:
+          type: string
+          description: O tipo de token
+          example: bearer
+          enum:
+            - bearer
+        expires_in:
+          type: integer
+          description: A validade de token (em segundos)
+          format: int32
+          example: 3600
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A mensagem da resposta
+          example: Message content.
+    CreationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A mensagem da resposta
+          example: Message content.
+        id:
+          type: integer
+          description: O ID do registro criado
+          format: int64
+          example: 10
+  securitySchemes:
+    catalog_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
